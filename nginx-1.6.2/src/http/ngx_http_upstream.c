@@ -493,10 +493,10 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     u = r->upstream;
 
 #if (NGX_HTTP_CACHE)
-
+//如果开启了缓存功能
     if (u->conf->cache) {
         ngx_int_t  rc;
-
+//查找缓存是否存在
         rc = ngx_http_upstream_cache(r, u);
 
         if (rc == NGX_BUSY) {
@@ -1479,7 +1479,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     return NGX_OK;
 }
 
-
+//函数功能：将客户端请求发送给upstream. 
 static void
 ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
@@ -1487,17 +1487,17 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_connection_t  *c;
 
     c = u->peer.connection;
-
+//garfield nginx 发送回源请求
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream send request");
-
+//如果test connect失败，则说明连接失败，于是跳到下一个upstream，然后返回 配置多个upstream server 
     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
     }
 
     c->log->action = "sending request to upstream";
-
+//garfield 调用ngx_output_chain来把请求发送出去 //发送数据，这里的u->output.output_filter已经被修改过了 
     rc = ngx_output_chain(&u->output, u->request_sent ? NULL : u->request_bufs);
 
     u->request_sent = 1;
@@ -1510,7 +1510,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
-
+//和request的处理类似，如果again，则说明数据没有发送完毕，此时挂载写事件
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, u->conf->send_timeout);
 
@@ -1538,7 +1538,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     ngx_add_timer(c->read, u->conf->read_timeout);
-
+//garfield 处理remote server的response了 //如果读也可以了，则开始解析头 
     if (c->read->ready) {
         ngx_http_upstream_process_header(r, u);
         return;
@@ -1561,7 +1561,7 @@ ngx_http_upstream_send_request_handler(ngx_http_request_t *r,
     ngx_connection_t  *c;
 
     c = u->peer.connection;
-
+//garfield nginx 发送回源请求handler
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http upstream send request handler");
 
@@ -1599,7 +1599,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_connection_t  *c;
 
     c = u->peer.connection;
-
+//garfield 已经取得回源的数据返回
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream process header");
 
@@ -2310,7 +2310,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     /* TODO: preallocate event_pipe bufs, look "Content-Length" */
-
+//如果开启缓存功能
 #if (NGX_HTTP_CACHE)
 
     if (r->cache && r->cache->file.fd != NGX_INVALID_FILE) {
@@ -2335,7 +2335,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             r->cache->min_uses = u->conf->cache_min_uses;
             r->cache->body_start = u->conf->buffer_size;
             r->cache->file_cache = u->conf->cache->data;
-
+ 
+            //创建缓存文件
             if (ngx_http_file_cache_create(r) != NGX_OK) {
                 ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
@@ -2345,7 +2346,9 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         break;
     }
 
+
     if (u->cacheable) {
+//是否需要缓存数据
         time_t  now, valid;
 
         now = ngx_time();
@@ -2489,7 +2492,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->read_event_handler = ngx_http_upstream_process_upstream;
     r->write_event_handler = ngx_http_upstream_process_downstream;
-
+//在这里把后端获取的文件写入cache garfield 
     ngx_http_upstream_process_upstream(r, u);
 }
 

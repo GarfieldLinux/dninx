@@ -200,7 +200,7 @@ ngx_http_file_cache_create(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-
+//生成key的md5字符串
 void
 ngx_http_file_cache_create_key(ngx_http_request_t *r)
 {
@@ -232,6 +232,8 @@ ngx_http_file_cache_create_key(ngx_http_request_t *r)
                       + sizeof(ngx_http_file_cache_key) + len + 1;
 
     ngx_crc32_final(c->crc32);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "garfield http cache c->key: \"%V\"", c->key);
     ngx_md5_final(c->key, &md5);
 }
 
@@ -925,7 +927,7 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
     uniq = 0;
     fs_size = 0;
-
+//将临时文件重命名为常规缓存文件
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache rename: \"%s\" to \"%s\"",
                    tf->file.name.data, c->file.name.data);
