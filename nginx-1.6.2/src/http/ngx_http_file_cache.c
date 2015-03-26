@@ -232,8 +232,6 @@ ngx_http_file_cache_create_key(ngx_http_request_t *r)
                       + sizeof(ngx_http_file_cache_key) + len + 1;
 
     ngx_crc32_final(c->crc32);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "garfield http cache c->key: \"%V\"", c->key);
     ngx_md5_final(c->key, &md5);
 }
 
@@ -270,7 +268,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         cln->handler = ngx_http_file_cache_cleanup;
         cln->data = c;
     }
-
+// 在客户端请求到来后，nginx会主动检索内存结点，如不存在则建立（无论磁盘缓存是否存在）
     rc = ngx_http_file_cache_exists(cache, c);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -679,7 +677,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
         goto done;
     }
-
+//如果执行到这里，说明结点不存在 新建结点 garfield   
     fcn = ngx_slab_alloc_locked(cache->shpool,
                                 sizeof(ngx_http_file_cache_node_t));
     if (fcn == NULL) {
@@ -773,7 +771,7 @@ ngx_http_file_cache_name(ngx_http_request_t *r, ngx_path_t *path)
     return NGX_OK;
 }
 
-
+//在内存中查找缓存是否存在 garfield 
 static ngx_http_file_cache_node_t *
 ngx_http_file_cache_lookup(ngx_http_file_cache_t *cache, u_char *key)
 {
@@ -939,7 +937,13 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     ext.delete_file = 1;
     ext.log = r->connection->log;
 
+    ngx_str_t  *new_file ; 
+    new_file = c->keys.elts;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "garfield rename http cache key: \"%V\"", &new_file[0]);
+
     rc = ngx_ext_rename_file(&tf->file.name, &c->file.name, &ext);
+    //rc = ngx_ext_rename_file(&tf->file.name, &new_file[0], &ext);
 
     if (rc == NGX_OK) {
 
@@ -1136,7 +1140,7 @@ ngx_http_cache_send(ngx_http_request_t *r)
     return ngx_http_output_filter(r, &out);
 }
 
-
+//这个函数将对内存结点的引用以及临时文件释放掉
 void
 ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
 {
@@ -1612,6 +1616,8 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
     ngx_shmtx_lock(&cache->shpool->mutex);
 
     fcn = ngx_http_file_cache_lookup(cache, c->key);
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "garfield uchar c-key: %s", c->key);
 
     if (fcn == NULL) {
 
@@ -1999,3 +2005,4 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
     return NGX_CONF_OK;
 }
+

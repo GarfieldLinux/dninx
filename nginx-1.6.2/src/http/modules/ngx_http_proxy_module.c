@@ -389,7 +389,8 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 #if (NGX_HTTP_CACHE)
 
     { ngx_string("proxy_cache"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+//      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_proxy_cache,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -677,7 +678,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     ngx_http_upstream_t        *u;
     ngx_http_proxy_ctx_t       *ctx;
     ngx_http_proxy_loc_conf_t  *plcf;
-
+//garfield check upstream connection 
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -711,6 +712,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     u->conf = &plcf->upstream;
 
 #if (NGX_HTTP_CACHE)
+    //garfield 开启cache 首先创建索引?
     u->create_key = ngx_http_proxy_create_key;
 #endif
     u->create_request = ngx_http_proxy_create_request;
@@ -1227,7 +1229,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
             *b->last++ = CR; *b->last++ = LF;
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy header: \"%V: %V\"",
+                           "garfield proxy_create_request http proxy header: \"%V: %V\"",
                            &header[i].key, &header[i].value);
         }
     }
@@ -1247,9 +1249,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
         b->last = e.pos;
     }
-
+//garfield proxy 完整的请求头
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy header:\n\"%*s\"",
+                   "garfield after proxy_create_request http proxy header:\n\"%*s\"",
                    (size_t) (b->last - b->pos), b->pos);
 
     if (plcf->body_set == NULL && plcf->upstream.pass_request_body) {
@@ -1451,7 +1453,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy header: \"%V: %V\"",
+                           "garfield http proxy header: \"%V: %V\"",
                            &h->key, &h->value);
 
             continue;

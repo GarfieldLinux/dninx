@@ -912,7 +912,7 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
         atom_name = atom_header + sizeof(uint32_t);
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                       "mp4 atom: %*s @%O:%uL",
+                       "garfield mp4 atom: %*s @%O:%uL",
                        4, atom_name, mp4->offset, atom_size);
 
         if (atom_size > (uint64_t) (NGX_MAX_OFF_T_VALUE - mp4->offset)

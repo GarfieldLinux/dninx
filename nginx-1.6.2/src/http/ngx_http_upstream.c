@@ -493,23 +493,25 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     u = r->upstream;
 
 #if (NGX_HTTP_CACHE)
-//如果开启了缓存功能
+//garfield 如果开启了缓存功能
     if (u->conf->cache) {
         ngx_int_t  rc;
-//查找缓存是否存在
+        //garfield 查找缓存是否存在  如果返回NGX_DECLINED就是说缓存中没有，请向后端发送请求   
         rc = ngx_http_upstream_cache(r, u);
 
         if (rc == NGX_BUSY) {
+        //garfield 重试一次 设置 r->write_event_handler 为事件调用函数
             r->write_event_handler = ngx_http_upstream_init_request;
             return;
         }
-
+        //garfield 设置 r->write_event_handler为事件调用函数
         r->write_event_handler = ngx_http_request_empty_handler;
 
         if (rc == NGX_DONE) {
+        //garfield 在缓存中找到了 直接返回 
             return;
         }
-
+        //garfield 确保此时rc的返回码 NGX_DECLINED 会进入下面的处理流程
         if (rc != NGX_DECLINED) {
             ngx_http_finalize_request(r, rc);
             return;
@@ -519,16 +521,19 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 #endif
 
     u->store = (u->conf->store || u->conf->store_lengths);
-
+    //ignore_client_abort为0标志着需要关注nginx和客户端的连接是否稳定
     if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
+        //该函数用来检查nginx与客户端之间的链路是否可用
         r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     }
 
     if (r->request_body) {
         u->request_bufs = r->request_body->bufs;
     }
-
+ //garfield 把用户来的request内容(如请求行，headers)放到r->upstream的成员变量中   
+ //garfield 如r->upstream->url存放请求的url   
+ //garfield 把请求(包括请求行，headers)放入r->upstream->request_bufs这个buf chain 
     if (u->create_request(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -708,7 +713,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_ERROR;
         }
 
-        /* TODO: add keys */
+        /* TODO: add keys first  by garfield */
 
         ngx_http_file_cache_create_key(r);
 
@@ -749,7 +754,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         u->cache_status = NGX_HTTP_CACHE_MISS;
     }
-
+//garfield 打开缓存文件
     rc = ngx_http_file_cache_open(r);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1485,7 +1490,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t          rc;
     ngx_connection_t  *c;
-
+//peer.connection中是nginx与上游服务器建立的connection  
     c = u->peer.connection;
 //garfield nginx 发送回源请求
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1497,9 +1502,12 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     c->log->action = "sending request to upstream";
-//garfield 调用ngx_output_chain来把请求发送出去 //发送数据，这里的u->output.output_filter已经被修改过了 
+//garfield 调用ngx_output_chain来把请求发送出去 //发送数据，这里的u->output.output_filter已经被修改过了
+//通过ngx_output_chain向上游服务器发送请求报文，request_sent  
+//用来表示是否已经发送请求头了，发送了的话，继续发送  
+//剩余未发的就OK了，剩余未发送的数据保存在了u->output里面 
     rc = ngx_output_chain(&u->output, u->request_sent ? NULL : u->request_bufs);
-
+ //设置request_sent标志，表明已经发送过请求  
     u->request_sent = 1;
 
     if (rc == NGX_ERROR) {
@@ -2380,6 +2388,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                    "http cacheable: %d", u->cacheable);
 
     if (u->cacheable == 0 && r->cache) {
+//garfield 内存结点的引用以及临时文件释放
         ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
     }
 
